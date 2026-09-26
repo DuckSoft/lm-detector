@@ -20,6 +20,7 @@ const sections = [
   ] },
   { title: 'OUTPUT', options: [
     ['--input FILE', 'Analyze saved outputs offline. No API requests.'],
+    ['--generate FILE', 'Write three portable challenges for external execution.'],
     ['--output FILE', 'Save all rounds, samples, and results as JSON. Credentials are excluded.'],
     ['--json', 'Write JSON to stdout instead of the TUI.'],
     ['--no-update-check', 'Disable background update checks. Env: FPD_NO_UPDATE_CHECK=1.'],

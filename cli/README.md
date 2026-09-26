@@ -52,6 +52,7 @@ Explicit flags override environment variables. Credentials do not appear in the 
 | `--challenges FILE` | Reuse a JSON array of three challenges in every round. |
 | `--bank FILE` | Use a custom reference bank. |
 | `--input FILE` | Analyze saved outputs without API requests. |
+| `--generate FILE` | Generate a portable three-challenge JSON file. Fill its `response` fields, then pass it to `--input` for offline verification. This does not require API credentials. |
 | `--output FILE` | Save all rounds, request settings, challenges, received text, and results. |
 | `--json` | Write machine-readable JSON to stdout. Disable the TUI. |
 | `--no-update-check` | Disable background update checks. Also accepts `FPD_NO_UPDATE_CHECK=1` or `NO_UPDATE_NOTIFIER=1`. |
@@ -96,6 +97,16 @@ bun run fpd --output result.json
 bun run fpd --input result.json
 bun run fpd --input result.json --strict --json
 ```
+
+To hand challenges to another user or run them on a separate machine, generate a portable file first:
+
+```sh
+fpd --generate challenge-response.json
+# Fill the response field for each challenge after the model answers.
+fpd --input challenge-response.json --json
+```
+
+The generated file contains the exact challenge IDs, prompts, and expected counts. The verifier accepts one to three nonempty responses, applies the same minimum-number and relaxed/strict rules as other offline inputs, and never sends an API request.
 
 The input can be a saved report, a report with `outputs`, an array of one to three `{ "text": "...", "expected_count": 300 }` objects, or a collection `result.json`. Collection samples are grouped by condition into rounds of up to three answers. Reports with several rounds are analyzed one round at a time. Strict replay rejects recorded truncation and unknown collection completion. Offline analysis of a plain output array cannot verify its original network completion status.
 

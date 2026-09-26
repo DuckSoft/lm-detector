@@ -4,7 +4,8 @@ import type { Bank } from '@fingerpoint/shared/types'
 import type { SharedDetector } from '@fingerpoint/shared/shared-detector'
 import { parseOptions, requestEndpoint } from './detect-options'
 import { errorMessage } from './detect-request'
-import { analyzeInput, loadChallenges, readJson, runDetection, serializeResult } from './detect-run'
+import { analyzeInput, loadChallenges, portableChallengeFile, readJson, runDetection, serializeResult } from './detect-run'
+import { generateChallenges } from '@fingerpoint/shared/challenge-browser.js'
 import { startUpdateCheck } from './detect-update'
 import type { UpdateCheck } from './detect-update'
 import { createDisplay } from './detect-ui'
@@ -31,6 +32,9 @@ export async function runDetectionCommand(args: string[]) {
     const options = parseOptions(args)
     if (!options) {
       await printHelp()
+    } else if (options.generate) {
+      await writeFile(options.generate, portableChallengeFile(generateChallenges(3)), { mode: 0o600 })
+      process.stdout.write(`Wrote portable challenges to ${options.generate}. Fill the response fields and run --input ${options.generate}.\n`)
     } else {
       key = options.config.apiKey
       if (!options.input) requestEndpoint(options.config)
