@@ -12,6 +12,7 @@ export interface DetectOptions {
   output?: string
   bank?: string
   challenges?: string
+  generate?: string
   json: boolean
   updateCheck: boolean
 }
@@ -31,7 +32,7 @@ export function parseOptions(args: string[], env = process.env): DetectOptions |
     repeat: { type: 'string', short: 'n' }, strict: { type: 'boolean', short: 's' },
     'no-stream': { type: 'boolean' }, timeout: { type: 'string' }, effort: { type: 'string', short: 'e' },
     input: { type: 'string' }, output: { type: 'string' }, bank: { type: 'string' },
-    challenges: { type: 'string' }, json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
+    challenges: { type: 'string' }, generate: { type: 'string' }, json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
     'base-url': { type: 'string' }, 'api-key': { type: 'string' },
     'no-update-check': { type: 'boolean' },
   }, strict: true, allowPositionals: false })
@@ -46,8 +47,11 @@ export function parseOptions(args: string[], env = process.env): DetectOptions |
   if (!Number.isFinite(timeout) || timeout < 0.001 || timeout > 2_147_483.647) {
     throw new Error('--timeout must be between 0.001 and 2147483.647 seconds.')
   }
-  if (values.input && (repeat !== 1 || values.challenges)) {
-    throw new Error('--input cannot be combined with --repeat or --challenges.')
+  if (values.input && (repeat !== 1 || values.challenges || values.generate)) {
+    throw new Error('--input cannot be combined with --repeat, --challenges, or --generate.')
+  }
+  if (values.generate && (values.challenges || values.output || values.model || values.apikey || values['api-key'] || values.baseurl || values['base-url'] || values.api || values.parallel || values.repeat || values.strict || values['no-stream'] || values.timeout || values.effort || values.json || values['no-update-check'])) {
+    throw new Error('--generate only creates a portable challenge file and cannot be combined with request options.')
   }
   const config: ApiConfig = {
     model: (values.model ?? env.MODEL ?? '').trim(),
@@ -56,7 +60,7 @@ export function parseOptions(args: string[], env = process.env): DetectOptions |
     format: api === 'message' ? 'anthropic' : api === 'chatcompletion' ? 'openai' : 'responses',
     stream: !values['no-stream'], effort: values.effort ?? '',
   }
-  if (!values.input) {
+  if (!values.input && !values.generate) {
     for (const [name, value, variable] of [
       ['model', config.model, 'MODEL'], ['apikey', config.apiKey, 'API_KEY'], ['baseurl', config.baseUrl, 'BASE_URL'],
     ]) {
@@ -67,7 +71,7 @@ export function parseOptions(args: string[], env = process.env): DetectOptions |
     config, api, parallel, repeat, timeoutMs: Math.round(timeout * 1000),
     strict: !!values.strict, json: !!values.json,
     updateCheck: !values['no-update-check'] && !env.FPD_NO_UPDATE_CHECK && !env.NO_UPDATE_NOTIFIER,
-    input: values.input, output: values.output, bank: values.bank, challenges: values.challenges,
+    input: values.input, output: values.output, bank: values.bank, challenges: values.challenges, generate: values.generate,
   }
 }
 

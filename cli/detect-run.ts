@@ -41,6 +41,15 @@ export async function loadChallenges(path?: string): Promise<Challenge[] | undef
   return data as Challenge[]
 }
 
+export function portableChallengeFile(challenges: Challenge[]) {
+  return JSON.stringify({
+    schema: 'fpd-challenge-v1',
+    created_at: new Date().toISOString(),
+    instructions: 'Fill response for each challenge, then run fpd --input this-file.json.',
+    challenges: challenges.map(challenge => ({ ...challenge, response: '' })),
+  }, null, 2) + '\n'
+}
+
 function englishAnalysis(analysis: Analysis): Analysis {
   let label: string, reason: string
   if (analysis.decision === 'unscorable') {
@@ -129,7 +138,25 @@ export async function runDetection(
 }
 
 export async function analyzeInput(options: DetectOptions, bank: Bank, detector: SharedDetector): Promise<DetectionState> {
-  const data = await readJson(options.input!)
+  let data = await readJson(options.input!)
+  if (data && typeof data === 'object' && !Array.isArray(data) && (data as Record<string, unknown>).schema === 'fpd-challenge-v1') {
+    const rows = (data as Record<string, unknown>).challenges
+    if (!Array.isArray(rows) || rows.length !== 3 || !rows.every(item => item && typeof item === 'object'
+      && typeof (item as Record<string, unknown>).id === 'string'
+      && typeof (item as Record<string, unknown>).prompt === 'string'
+      && Number.isSafeInteger((item as Record<string, unknown>).expected_count)
+      && Number((item as Record<string, unknown>).expected_count) > 0
+      && typeof ((item as Record<string, unknown>).response ?? (item as Record<string, unknown>).text) === 'string')) {
+      throw new Error('A portable challenge file must contain three challenges with response text.')
+    }
+    const outputs = rows.map(item => {
+      const row = item as Record<string, unknown>
+      const response = typeof row.response === 'string' && row.response.trim() ? row.response : row.text
+      return { text: String(response), expected_count: Number(row.expected_count) }
+    }).filter(output => output.text.trim())
+    if (!outputs.length) throw new Error('The portable challenge file has no responses. Fill response for at least one challenge.')
+    data = { outputs }
+  }
   const source = data && typeof data === 'object' && !Array.isArray(data) ? data as Record<string, unknown> : undefined
   let entries = Array.isArray(source?.rounds) ? source.rounds : [data]
   if (source?.schema_version === 1 && source.purpose === 'reference' && Array.isArray(source.samples)) {
